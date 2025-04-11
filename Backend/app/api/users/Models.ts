@@ -7,8 +7,8 @@ export interface IUser{
     email: string;
     password: string;
     role: string;
-    created_at: Date;
-    updated_at: Date;
+    created_at: String;
+    updated_at: String;
 }
 
 export const User = {
@@ -60,6 +60,8 @@ export const User = {
             return rows[0] as IUser;
     
         } catch (err) {
+            const error = err as Error;
+            process.env.NODE_ENV === 'development' && console.error(error.message);
             return null as unknown as IUser;
         }
     },
@@ -100,19 +102,27 @@ export const User = {
           throw new Model('Failed to update user');
         }
     },
-    delete: async (id: string): Promise<void> => {
+    delete: async (id: string): Promise<boolean> => {
         try {
           const { rows } = await pool.query('DELETE FROM users WHERE id = $1 RETURNING *', [id]);
 
           if (rows.length === 0) {
-            throw new Model('User not found');
+            // throw new Model('User not found');
+            return false;
           }
+
+          return true;
+          
         }catch (err) {
           const error = err as Error;
           process.env.NODE_ENV === 'development' && console.error(error.message);
           throw new Model('Failed to delete user');
         }
-    }
-      
-      
+    } 
+}
+
+export interface GetAllUsersTest {
+  success: string;
+  message: string;
+  data: IUser[];
 }

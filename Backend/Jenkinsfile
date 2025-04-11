@@ -1,0 +1,66 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_CREDENTIALS_ID = 'dockerhub-credentials' // ID kredensial Docker Hub di Jenkins
+        DOCKER_IMAGE = 'yourusername/yourapp' // Ganti dengan nama image Docker Anda
+        GITHUB_REPO = 'https://github.com/yourusername/yourrepo.git' // Ganti dengan URL repositori GitHub Anda
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                // Menarik kode dari GitHub
+                git url: GITHUB_REPO, branch: 'main'
+            }
+        }
+
+        stage('Build') {
+            steps {
+                // Membangun image Docker
+                script {
+                    docker.build(DOCKER_IMAGE)
+                }
+            }
+        }
+
+        stage('Test') {
+            steps {
+                // Menjalankan pengujian (misalnya, menggunakan npm atau pytest)
+                sh 'npm install' // Ganti dengan perintah yang sesuai untuk proyek Anda
+                sh 'npm test' // Ganti dengan perintah pengujian yang sesuai
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                // Masuk ke Docker Hub
+                withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
+                    script {
+                        // Login ke Docker Hub
+                        sh 'echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin'
+                        // Mendorong image ke Docker Hub
+                        docker.image(DOCKER_IMAGE).push('latest')
+                    }
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                // Langkah untuk melakukan deployment (misalnya, menarik image di server produksi)
+                // Anda bisa menggunakan SSH atau alat lain untuk melakukan deployment
+                sh 'ssh user@yourserver "docker pull ${DOCKER_IMAGE}:latest && docker run -d ${DOCKER_IMAGE}:latest"'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Pipeline berhasil dijalankan!'
+        }
+        failure {
+            echo 'Pipeline gagal!'
+        }
+    }
+}

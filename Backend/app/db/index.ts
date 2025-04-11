@@ -1,14 +1,7 @@
-// app/config/db.ts
+// app/db/index.ts
 import 'dotenv/config'
 import { Pool } from 'pg'
-
-const pool = new Pool({
-    host: process.env.DB_HOST,
-    password: process.env.DB_PASSWORD,
-    user: process.env.DB_USER,
-    port: parseInt(process.env.DB_PORT || '5432'),
-    database: process.env.DB_NAME
-})
+import pool from './config' // Import pool from config.ts
 
 // Simple function to check database connection status
 export async function checkDatabaseConnection() {
@@ -22,7 +15,8 @@ export async function checkDatabaseConnection() {
         console.log('Database query executed successfully');
         return true;
     } catch (err) {
-        console.error('Database connection failed:', err);
+        const error = err as Error;
+        console.log('Database tidak terhubung', error.message)
         return false;
     } finally {
         if (client) client.release();

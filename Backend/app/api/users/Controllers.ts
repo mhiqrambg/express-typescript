@@ -38,7 +38,7 @@ export const Users: UsersController = {
       if(process.env.NODE_ENV === 'development'){
         const err = error as Error;
         next(err);
-        return;
+        return ;
       }
     
     }
@@ -136,11 +136,16 @@ export const Users: UsersController = {
   remove: async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-      if (!id) {
+
+      if (!isUUID(id)) {
         throw new ValidationError('ID is required');
       }
 
-      await User.delete(id);
+      const response = await User.delete(id);
+
+      if (!response) {
+        throw new Model('User not found');
+      }
 
       res.status(200).json({
         success:'success',
@@ -152,6 +157,5 @@ export const Users: UsersController = {
       next(err); // Always pass the error to the error-handling middleware
     }
   },
-  
-  
+
 };
