@@ -8,6 +8,16 @@ export class ValidationError extends Error {
     }
   }
 
+export class DatabaseError extends Error {
+  statusCode: number;
+  
+  constructor(message: string) {
+    super(message);
+    this.name = 'Database Error';
+    this.statusCode = 500; // Internal Server Error
+  }
+}
+
 export class InternalServerError extends Error {
     statusCode: number;
     
@@ -18,7 +28,7 @@ export class InternalServerError extends Error {
     }
 }
 
-export class Model extends Error {
+export class ModelError extends Error {
     statusCode: number;
     
     constructor(message: string) {

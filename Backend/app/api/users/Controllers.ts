@@ -1,15 +1,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { User } from './Models';
-import { InternalServerError, Model, ValidationError } from '../../errors';
-import { hashPassword } from '../../utils/Bcrypt';
-import {validate as isUUID } from 'uuid';
-
-interface UserCreateInput {
-  name: string;
-  email: string;
-  password: string;
-  role: string;
-}
+import {ValidationError, ModelError} from '../../errors';
+import { UsersService } from '../../services/Users';
 
 interface UsersController {
   get: (req: Request, res: Response, next:NextFunction) => Promise<void>;
@@ -32,31 +24,21 @@ export const Users: UsersController = {
         success: 'success',
         message: 'Users retrieved successfully',
         data: users,
-      })
+      });
 
     } catch (error: unknown) {
+      const err = error as Error;
       if(process.env.NODE_ENV === 'development'){
-        const err = error as Error;
-        next(err);
-        return ;
+        console.error(err.message);
       }
-    
+      next(err); // Always pass errors to the next middleware regardless of environment
     }
   },
   one: async (req: Request, res: Response, next:NextFunction): Promise<void> => {
     try {
       const { id } = req.params;
-
-      if (!isUUID(id)) {
-        throw new ValidationError('Invalid ID format');
-      }
       
-      const user = await User.findOne({id}).then((user) => {
-        if (!user) {
-          throw new Model('User not found');
-        }
-        return user;
-      })
+      const user = await UsersService.one(id)
 
       res.status(200).json({
         success:'success',
@@ -73,21 +55,7 @@ export const Users: UsersController = {
     try {
       const { name, email, password } = req.body;
 
-      const existingUser = await User.findOne({ email });
-
-      if (existingUser) {
-        throw new ValidationError('Email already exists');
-      }
-
-      const hashedPassword = await hashPassword(password);
-      const userData: UserCreateInput = {
-        name,
-        email,
-        password:hashedPassword,
-        role: 'user'
-      };
-
-      const user = await User.create(userData);
+      const user = await UsersService.create({ name, email, password, role: 'user'});
       
       res.status(201).json({
         success: 'success',
@@ -98,35 +66,23 @@ export const Users: UsersController = {
     } catch (error: unknown) {
       if(process.env.NODE_ENV === 'development'){
         const err = error as Error;
-        next(err);
-        return;
+        console.log(err.message);
       }
+      next(error);
     }
   },
   update: async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const { name, email, password } = req.body;
+      const userData = {...req.body, role: 'user'};
       const { id } = req.params;
-
-      if (!isUUID(id)) {
-        throw new ValidationError('Invalid ID format');
-      }
-
-      const hashedPassword = await hashPassword(password);
-      const userData: UserCreateInput = {
-        name,
-        email,
-        password: hashedPassword,
-        role: 'user',
-      };
-  
-      const existingUser = await User.findByIdAndUpdate(id, userData);
+      const user = req.params?.id && await UsersService.update(id, userData);
   
       res.status(200).json({
         success: 'success',
         message: 'User updated successfully',
-        user: existingUser,
+        user,
       });
+
     } catch (error: unknown) {
       const err = error as Error;
       process.env.NODE_ENV === 'development' && console.error(err.message);
@@ -137,19 +93,12 @@ export const Users: UsersController = {
     try {
       const { id } = req.params;
 
-      if (!isUUID(id)) {
-        throw new ValidationError('ID is required');
-      }
-
-      const response = await User.delete(id);
-
-      if (!response) {
-        throw new Model('User not found');
-      }
+      const user = await UsersService.remove(id);
 
       res.status(200).json({
         success:'success',
         message: 'User deleted successfully',
+        user,
       })
     }catch (error: unknown) {
       const err = error as Error;
@@ -157,5 +106,4 @@ export const Users: UsersController = {
       next(err); // Always pass the error to the error-handling middleware
     }
   },
-
 };

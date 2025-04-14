@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from 'express';
-import pool, { checkDatabaseConnection } from './app/db';
 import { errorHandler } from './app/middleware/errorHandler';
+import cors from 'cors';
+import {db} from './app/db/config'
 
 // Routes
 import usersRoutes from './app/api/users/Routes';
@@ -9,7 +10,9 @@ const app = express();
 const port = 3000;
 
 // Middleware
+app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
 // API Routes
 const v1 = '/api/v1';
@@ -28,10 +31,12 @@ app.use((req: Request, res: Response) => {
   });
 });
 
-app.listen(port, async () => {
-  await checkDatabaseConnection();
-  console.log(`Server running at http://localhost:${port}`);
-
-});
+// Only start the server if this file is run directly (not imported in tests)
+if (require.main === module) {
+  app.listen(port, async () => {
+    await db.connect();
+    console.log(`Server running at http://localhost:${port}`);
+  });
+}
 
 export default app;

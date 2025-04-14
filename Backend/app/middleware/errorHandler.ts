@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { ValidationError, InternalServerError, Model } from '../errors';
+import { ValidationError, InternalServerError, ModelError } from '../errors';
 
 export const errorHandler = (
   err: Error,
@@ -27,7 +27,7 @@ console.error('\x1b[31m%s\x1b[0m', `${err.name}: ${err.message}`);
   }
 
   // Handle Model error
-  if (err instanceof Model) {
+  if (err instanceof ModelError) {
     return res.status(err.statusCode).json({
       status: 'fail',
       message: err.message,
