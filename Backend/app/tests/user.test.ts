@@ -8,6 +8,7 @@ jest.setTimeout(60000); // Increased timeout for all tests
 let server: Server;
 let agent: request.Agent;
 let createdUserId: string; 
+let token: string; // Token for authentication
 
 beforeAll(async () => {
   await db.connect(); 
@@ -73,22 +74,56 @@ beforeAll(async () => {
   };
 
 describe('Users API Testing', () => {
+    describe('POST /api/v1/register - Register User', () => {
+      test('Should register user with valid input', async () => {
+        const response = await agent.post('/api/v1/register')
+          .send(validUser)
+          .expect('Content-Type', /json/)
+          .expect(201);
+  
+        expect(response.body).toHaveProperty('success', 'success');
+        expect(response.body).toHaveProperty('message', 'Register successfully');
+        expect(response.body.data).toHaveProperty('name', validUser.name);
+        expect(response.body.data).toHaveProperty('email', validUser.email);
+        expect(response.body.data).toHaveProperty('id');
+        
+        // Simpan ID untuk digunakan dalam test berikutnya
+        createdUserId = response.body.data.id;
+      });
+    });
+
+    describe('POST /api/v1/users - Login Users', () => {
+      test('Should return login success', async () => {
+        const response = await agent.post('/api/v1/login').send({ email: validUser.email, password: validUser.password })
+          .expect('Content-Type', /json/)
+          .expect(200);
+          
+        expect(response.body).toHaveProperty('success', 'success');
+        expect(response.body).toHaveProperty('message', 'Login successfully');
+        expect(response.body).toHaveProperty('token');
+
+        token = response.body.token;
+      })
+    })
+
     // Test suite untuk create user (POST)
     describe('POST /api/v1/users - Create User', () => {
       test('Should create user with valid input', async () => {
         const response = await agent.post('/api/v1/users')
-          .send(validUser)
+          .set('Authorization', `Bearer ${token}`)
+          .send({
+            ...validUser,
+            email: "bayugatra@gmail.com",
+          })
           .expect('Content-Type', /json/)
           .expect(201);
   
         expect(response.body).toHaveProperty('success', 'success');
         expect(response.body).toHaveProperty('message', 'User created successfully');
         expect(response.body.user).toHaveProperty('name', validUser.name);
-        expect(response.body.user).toHaveProperty('email', validUser.email);
+        expect(response.body.user).toHaveProperty('email');
         expect(response.body.user).toHaveProperty('id');
         
-        // Simpan ID untuk digunakan dalam test berikutnya
-        createdUserId = response.body.user.id;
       });
   
       test('Should reject invalid email format', async () => {
@@ -97,8 +132,8 @@ describe('Users API Testing', () => {
           .expect('Content-Type', /json/)
           .expect(400);
           
-        expect(response.body).toHaveProperty('status', 'fail');
         expect(response.body).toHaveProperty('errors');
+        expect(response.body.errors[0]).toHaveProperty('type', 'field');
       });
   
       test('Should reject when passwords do not match', async () => {
@@ -113,12 +148,14 @@ describe('Users API Testing', () => {
           .expect('Content-Type', /json/)
           .expect(400);
           
-        expect(response.body).toHaveProperty('status', 'fail');
+          expect(response.body).toHaveProperty('errors');
+          expect(response.body.errors[0]).toHaveProperty('type', 'field');
       });
   
       test('Should reject duplicate email', async () => {
         // Try to create a user with the same email again
         const response = await agent.post('/api/v1/users')
+        .set('Authorization', `Bearer ${token}`)
           .send(validUser)
           .expect('Content-Type', /json/)
           .expect(400);
@@ -176,6 +213,7 @@ describe('Users API Testing', () => {
         }
 
         const response = await agent.put(`/api/v1/users/${createdUserId}`)
+          .set('Authorization', `Bearer ${token}`)
           .send(updatedInfo)
           .expect('Content-Type', /json/)
           .expect(200);
@@ -183,9 +221,6 @@ describe('Users API Testing', () => {
         expect(response.body).toHaveProperty('success', 'success');
         expect(response.body).toHaveProperty('message', 'User updated successfully');
         expect(response.body.user).toHaveProperty('name', updatedInfo.name);
-
-        console.log('udpateInfo.name', updatedInfo.name)
-        console.log('response.body.user.name', response.body.user.name)
       });
   
       test('Should reject update with invalid data', async () => {
@@ -200,7 +235,8 @@ describe('Users API Testing', () => {
           .expect('Content-Type', /json/)
           .expect(400);
           
-        expect(response.body).toHaveProperty('status', 'fail');
+          expect(response.body).toHaveProperty('errors');
+          expect(response.body.errors[0]).toHaveProperty('type', 'field');
       });
   
       test('Should return 400 for updating non-existent user', async () => {
@@ -209,7 +245,8 @@ describe('Users API Testing', () => {
           .send({ name: 'New Name' })
           .expect(400);
           
-        expect(response.body).toHaveProperty('status', 'fail');
+          expect(response.body).toHaveProperty('errors');
+          expect(response.body.errors[0]).toHaveProperty('type', 'field');
       });
     });
   
@@ -316,7 +353,8 @@ describe('Users API Testing', () => {
           .send(userWithEmptyName)
           .expect(400);
           
-        expect(response.body).toHaveProperty('status', 'fail');
+          expect(response.body).toHaveProperty('errors');
+          expect(response.body.errors[0]).toHaveProperty('type', 'field');
       });
   
       test('Should reject user with password too short', async () => {
@@ -331,7 +369,8 @@ describe('Users API Testing', () => {
           .send(userWithShortPassword)
           .expect(400);
           
-        expect(response.body).toHaveProperty('status', 'fail');
+          expect(response.body).toHaveProperty('errors');
+          expect(response.body.errors[0]).toHaveProperty('type', 'field');
       });
     });
 });

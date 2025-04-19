@@ -7,10 +7,14 @@ export const ValUsers = [
     .isLength({ min: 3 })
     .withMessage('Name must be at least 3 characters long'),
   body('email')
-    .notEmpty()
-    .withMessage('Email is required')
-    .isEmail()
-    .withMessage('Invalid email address'),
+    .isEmail().withMessage('Invalid email')
+    .custom(value => {
+        const localPart = value.split('@')[0];
+        if (localPart.length <= 3) {
+            throw new Error('Email username must be more than 3 characters');
+        }
+        return true;
+  }),
   body('password')
     .notEmpty()
     .withMessage('Password is required')

@@ -2,6 +2,7 @@ import { User } from '../api/users/Models';
 import { ValidationError, ModelError } from '../errors/index';
 import {validate as isUUID } from 'uuid';
 import { hashPassword } from '../utils/Bcrypt';
+import { Request } from 'express';
 
 interface UserCreateInput {
     name: string;
@@ -14,17 +15,19 @@ export const UsersService = {
     create: async (userData: UserCreateInput) => {
         
         const existingUser = await User.findOne({ email: userData.email });
+        
         const hashPassworded = await hashPassword(userData.password);
         if (existingUser) {
             throw new ValidationError('Email already exists');
         }
         
         const user = await User.create({ ...userData, password: hashPassworded });
-        console.log('Service Berjalan', user)
         return user;
     },
     update: async (id: string, userData: UserCreateInput) => {
+
         const {name, email, password, role} = userData;
+
         if (!isUUID(id)) {
             throw new ValidationError('Invalid ID format');
           }

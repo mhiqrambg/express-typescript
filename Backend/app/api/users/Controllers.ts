@@ -1,7 +1,8 @@
 import { NextFunction, Request, Response } from 'express';
 import { User } from './Models';
-import {ValidationError, ModelError} from '../../errors';
+import { ValidationError, ModelError } from '../../errors';
 import { UsersService } from '../../services/Users';
+import { handleError } from '../../utils/handleError';
 
 interface UsersController {
   get: (req: Request, res: Response, next:NextFunction) => Promise<void>;
@@ -27,11 +28,7 @@ export const Users: UsersController = {
       });
 
     } catch (error: unknown) {
-      const err = error as Error;
-      if(process.env.NODE_ENV === 'development'){
-        console.error(err.message);
-      }
-      next(err); // Always pass errors to the next middleware regardless of environment
+      handleError(error, next);
     }
   },
   one: async (req: Request, res: Response, next:NextFunction): Promise<void> => {
@@ -46,9 +43,7 @@ export const Users: UsersController = {
         data: user,
       });
     }catch (error: unknown) {
-      const err = error as Error;
-      process.env.NODE_ENV === 'development' && console.error(err.message);
-      next(err); // Always pass the error to the error-handling middleware
+      handleError(error, next);
     }
   },
   create: async (req: Request, res: Response, next:NextFunction): Promise<void> => {
@@ -64,18 +59,19 @@ export const Users: UsersController = {
       });
       
     } catch (error: unknown) {
-      if(process.env.NODE_ENV === 'development'){
-        const err = error as Error;
-        console.log(err.message);
-      }
-      next(error);
+      handleError(error, next);
     }
   },
   update: async (req: Request, res: Response, next: NextFunction): Promise<void> => {
     try {
-      const userData = {...req.body, role: 'user'};
+      const { name, email, password } = req.body;
+
       const { id } = req.params;
-      const user = req.params?.id && await UsersService.update(id, userData);
+      const user = req.params?.id && await UsersService.update(id, {name, email, password, role:'user'});
+
+      if (!user) {
+        throw new ModelError('User not found');
+      }
   
       res.status(200).json({
         success: 'success',
@@ -84,9 +80,7 @@ export const Users: UsersController = {
       });
 
     } catch (error: unknown) {
-      const err = error as Error;
-      process.env.NODE_ENV === 'development' && console.error(err.message);
-      next(err); // Always pass the error to the error-handling middleware
+      handleError(error, next);
     }
   },
   remove: async (req: Request, res: Response, next: NextFunction): Promise<void> => {

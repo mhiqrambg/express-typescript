@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { ValidationError, InternalServerError, ModelError } from '../errors';
+import { ValidationError, InternalServerError, ModelError, AuthError } from '../errors';
 
 export const errorHandler = (
   err: Error,
@@ -8,7 +8,8 @@ export const errorHandler = (
   next: NextFunction
 ): Response | void => {
   // Log the error for debugging purposes
-console.error('\x1b[31m%s\x1b[0m', `${err.name}: ${err.message}`);
+
+  process.env.NODE_ENV === 'development' && console.error('\x1b[31m%s\x1b[0m', `${err.name}: ${err.message}\n${err.stack}`);
 
   // Handle ValidationError
   if (err instanceof ValidationError) {
@@ -28,6 +29,14 @@ console.error('\x1b[31m%s\x1b[0m', `${err.name}: ${err.message}`);
 
   // Handle Model error
   if (err instanceof ModelError) {
+    return res.status(err.statusCode).json({
+      status: 'fail',
+      message: err.message,
+    });
+  }
+
+  // Handle Auth error
+  if (err instanceof AuthError) {
     return res.status(err.statusCode).json({
       status: 'fail',
       message: err.message,

@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { Pool } from 'pg';
-import {DatabaseError} from '../errors/index';
+import { DatabaseError } from '../errors/index';
 
 let pool: Pool;
 
@@ -32,7 +32,8 @@ export const db = {
         client.release();
         console.log('Connected to the database');
       } catch (error) {
-        console.error('Error connecting to the database:', error);
+        const err = error as Error;
+        console.error(err.message);
         throw new DatabaseError('Failed to connect to the database');
       }
     },
@@ -41,12 +42,13 @@ export const db = {
     },
   
     clearDatabase: async (): Promise<void> => {
-      if (process.env.NODE_ENV === 'test') {
+      if (process.env.NODE_ENV as string === 'test') {
         try {
           await pool.query('DELETE FROM users');
           console.log('Database cleared');
         } catch (error) {
-          console.error('Error clearing database:', error);
+          const err = error as Error;
+          console.error(err.message);
           throw new DatabaseError('Failed to clear database');
         }
       }

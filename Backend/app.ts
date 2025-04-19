@@ -5,18 +5,26 @@ import {db} from './app/db/config'
 
 // Routes
 import usersRoutes from './app/api/users/Routes';
+import authRoutes  from './app/api/auth/Routes';
 
 const app = express();
 const port = 3000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:3001',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // API Routes
 const v1 = '/api/v1';
 app.use(v1, usersRoutes);
+app.use(v1, authRoutes);
 
 // Error handling middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
